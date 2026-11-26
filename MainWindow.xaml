@@ -1,78 +1,232 @@
-<Window x:Class="Inventar.MainWindow"
- xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
- xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Title="Инвентаризация" Height="790" Width="1240" MinHeight="650" MinWidth="980"
- WindowStartupLocation="CenterScreen" Background="#F3F6FB"
- PreviewKeyDown="Window_PreviewKeyDown">
- <DockPanel>
-  <Border DockPanel.Dock="Top" Background="#173758" Padding="22,15">
-   <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-    <StackPanel><TextBlock Text="ИНВЕНТАРИЗАЦИЯ" Foreground="White" FontSize="21" FontWeight="Bold"/>
-     <TextBlock Text="Учёт фактических остатков · сравнение с документом" Foreground="#C6D2E5" Margin="0,4,0,0"/></StackPanel>
-    <TextBlock x:Name="FileLabel" Grid.Column="1" Text="Файл не выбран" Foreground="#C6D2E5" VerticalAlignment="Center"/>
-   </Grid>
-  </Border>
-  <Border DockPanel.Dock="Top" Padding="16,12">
-   <WrapPanel>
-    <Button Content="＋ Загрузить Excel" Click="Load_Click" Padding="14,8" Margin="0,0,8,0"/>
-    <Button Content="↶ Отменить скан" Click="Undo_Click" Padding="14,8" Margin="0,0,8,0"/>
-    <Button Content="Итоги" Click="Finish_Click" Padding="14,8" Margin="0,0,8,0"/>
-    <Button Content="Экспорт CSV" Click="Export_Click" Padding="14,8" Margin="0,0,8,0"/>
-    <Button x:Name="SoundButton" Content="🔊 Звук: Вкл" Click="Sound_Click" Padding="14,8"/>
-   </WrapPanel>
-  </Border>
-  <Border DockPanel.Dock="Top" Background="White" BorderBrush="#DCE3EE" BorderThickness="1" Margin="16,0,16,12" Padding="14">
-   <StackPanel><TextBlock Text="СКАНИРОВАНИЕ ШТРИХКОДА / АРТИКУЛА" Foreground="#68758A" FontWeight="SemiBold"/>
-    <DockPanel Margin="0,8,0,0"><Button DockPanel.Dock="Right" Content="Добавить" Click="Scan_Click" Padding="18,8" Margin="10,0,0,0"/>
-     <TextBox x:Name="ScanBox" FontSize="17" Padding="8" VerticalContentAlignment="Center" KeyDown="ScanBox_KeyDown"/>
-    </DockPanel>
-    <TextBlock Text="Сканер должен завершать ввод клавишей Enter." Foreground="#68758A" FontSize="11" Margin="0,6,0,0"/>
-   </StackPanel>
-  </Border>
-  <UniformGrid DockPanel.Dock="Top" Columns="5" Margin="16,0,8,12">
-   <Border Background="White" Padding="12" Margin="0,0,8,0"><StackPanel><TextBlock Text="ПОЗИЦИЙ" Foreground="#68758A"/><TextBlock x:Name="TotalText" Text="0" FontSize="23" FontWeight="Bold"/></StackPanel></Border>
-   <Border Background="White" Padding="12" Margin="0,0,8,0"><StackPanel><TextBlock Text="СОВПАДАЕТ" Foreground="#68758A"/><TextBlock x:Name="MatchText" Text="0" FontSize="23" Foreground="#16865B" FontWeight="Bold"/></StackPanel></Border>
-   <Border Background="White" Padding="12" Margin="0,0,8,0"><StackPanel><TextBlock Text="НЕДОСТАЧА" Foreground="#68758A"/><TextBlock x:Name="ShortText" Text="0" FontSize="23" Foreground="#C43D4B" FontWeight="Bold"/></StackPanel></Border>
-   <Border Background="White" Padding="12" Margin="0,0,8,0"><StackPanel><TextBlock Text="ИЗЛИШЕК" Foreground="#68758A"/><TextBlock x:Name="OverText" Text="0" FontSize="23" Foreground="#C17A16" FontWeight="Bold"/></StackPanel></Border>
-   <Border Background="White" Padding="12" Margin="0,0,8,0"><StackPanel><TextBlock Text="ОТСКАНИРОВАНО" Foreground="#68758A"/><TextBlock x:Name="ScannedText" Text="0" FontSize="23" Foreground="#2864DC" FontWeight="Bold"/></StackPanel></Border>
-  </UniformGrid>
-  <Border DockPanel.Dock="Top" Margin="16,0,16,8">
-   <DockPanel><TextBlock Text="Список товаров" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
-    <TextBox x:Name="SearchBox" DockPanel.Dock="Right" Width="300" Padding="7" TextChanged="Search_Changed"/>
-    <TextBlock Text="Поиск:" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="0,0,8,0"/>
-   </DockPanel>
-  </Border>
-  <DataGrid x:Name="ItemsGrid" Margin="16,0,16,8" AutoGenerateColumns="False" IsReadOnly="True"
-   CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
-   AlternatingRowBackground="#F8FAFD" SelectionMode="Single">
-   <DataGrid.RowStyle>
-    <Style TargetType="DataGridRow">
-     <Setter Property="Background" Value="White"/>
-     <Setter Property="BorderBrush" Value="#E3E9F1"/>
-     <Setter Property="BorderThickness" Value="0,0,0,1"/>
-     <Style.Triggers>
-      <Trigger Property="IsSelected" Value="True">
-       <Setter Property="Background" Value="#D7E9FF"/>
-       <Setter Property="Foreground" Value="#173758"/>
-      </Trigger>
-      <DataTrigger Binding="{Binding IsLastScanned}" Value="True">
-       <Setter Property="Background" Value="#B9F2D2"/>
-       <Setter Property="Foreground" Value="#145B3E"/>
-       <Setter Property="BorderBrush" Value="#16865B"/>
-       <Setter Property="BorderThickness" Value="2,1,2,1"/>
-      </DataTrigger>
-     </Style.Triggers>
-    </Style>
-   </DataGrid.RowStyle>
-   <DataGrid.Columns>
-    <DataGridTextColumn Header="Артикул" Binding="{Binding Code}" Width="140"/>
-    <DataGridTextColumn Header="Номенклатура" Binding="{Binding Name}" Width="*"/>
-    <DataGridTextColumn Header="Остаток (N)" Binding="{Binding Stock}" Width="120"/>
-    <DataGridTextColumn Header="Факт" Binding="{Binding Fact}" Width="90"/>
-    <DataGridTextColumn Header="Разница" Binding="{Binding Diff}" Width="100"/>
-    <DataGridTextColumn Header="Статус" Binding="{Binding Status}" Width="130"/>
-   </DataGrid.Columns>
-  </DataGrid>
-  <StatusBar DockPanel.Dock="Bottom"><StatusBarItem><TextBlock x:Name="StatusText" Text="Загрузите Excel-файл инвентаризации"/></StatusBarItem><StatusBarItem HorizontalAlignment="Right"><TextBlock Text="Автосохранение включено" Foreground="#16865B"/></StatusBarItem></StatusBar>
- </DockPanel>
-</Window>
+using ClosedXML.Excel;
+using Microsoft.Win32;
+using System.Collections.ObjectModel;
+using System.Globalization;
+using System.ComponentModel;
+using System.IO;
+using System.Text;
+using System.Text.Json;
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Media;
+
+namespace Inventar;
+
+public sealed class InventoryItem : INotifyPropertyChanged
+{
+    private int _fact;
+    private bool _isLastScanned;
+
+    public string Code { get; set; } = "";
+    public string Name { get; set; } = "";
+    public double Stock { get; set; }
+    public int Fact
+    {
+        get => _fact;
+        set
+        {
+            if (_fact == value) return;
+            _fact = value;
+            OnPropertyChanged(nameof(Fact));
+            OnPropertyChanged(nameof(Diff));
+            OnPropertyChanged(nameof(Status));
+        }
+    }
+    public bool IsLastScanned
+    {
+        get => _isLastScanned;
+        set
+        {
+            if (_isLastScanned == value) return;
+            _isLastScanned = value;
+            OnPropertyChanged(nameof(IsLastScanned));
+        }
+    }
+    public double Diff => Fact - Stock;
+    public string Status => Diff == 0 ? "РЎРѕРІРїР°РґР°РµС‚" : Diff < 0 ? "РќРµРґРѕСЃС‚Р°С‡Р°" : "РР·Р»РёС€РµРє";
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    private void OnPropertyChanged(string propertyName) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+}
+public sealed class SessionData
+{
+    public string Source { get; set; } = "";
+    public List<InventoryItem> Items { get; set; } = new();
+    public List<string> Undo { get; set; } = new();
+}
+public partial class MainWindow : Window
+{
+    private readonly ObservableCollection<InventoryItem> _items = new();
+    private readonly Stack<string> _undo = new();
+    private readonly string _sessionPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Inventar", "session.json");
+    private bool _sound = true;
+    private string _source = "";
+    public MainWindow()
+    {
+        InitializeComponent();
+        ItemsGrid.ItemsSource = _items;
+        LoadSession();
+        ScanBox.Focus();
+    }
+    private void Load_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new OpenFileDialog { Filter = "РљРЅРёРіРё Excel (*.xlsx)|*.xlsx", Title = "Р’С‹Р±РµСЂРёС‚Рµ С„Р°Р№Р» РёРЅРІРµРЅС‚Р°СЂРёР·Р°С†РёРё" };
+        if (dlg.ShowDialog() != true) return;
+        try
+        {
+            using var wb = new XLWorkbook(dlg.FileName);
+            var dict = new Dictionary<string, InventoryItem>(StringComparer.OrdinalIgnoreCase);
+            foreach (var ws in wb.Worksheets)
+            {
+                foreach (var row in ws.RowsUsed())
+                {
+                    string code = row.Cell(1).GetString().Trim();
+                    if (string.IsNullOrWhiteSpace(code) || code.Equals("РђСЂС‚РёРєСѓР»", StringComparison.OrdinalIgnoreCase) || code.StartsWith("РџСЂР°Р№СЃ-Р»РёСЃС‚", StringComparison.OrdinalIgnoreCase)) continue;
+                    string name = row.Cell(4).GetString().Trim();
+                    double stock = 0;
+                    var cell = row.Cell(14);
+                    if (!cell.IsEmpty())
+                    {
+                        if (cell.TryGetValue<double>(out var numeric)) stock = numeric;
+                        else if (!double.TryParse(cell.GetString().Replace(',', '.'), NumberStyles.Any, CultureInfo.InvariantCulture, out stock)) continue;
+                    }
+                    if (!dict.ContainsKey(code)) dict[code] = new InventoryItem { Code = code, Name = name, Stock = stock };
+                }
+            }
+            if (dict.Count == 0) { MessageBox.Show("РќРµ РЅР°Р№РґРµРЅС‹ С‚РѕРІР°СЂС‹. РћР¶РёРґР°СЋС‚СЃСЏ Р°СЂС‚РёРєСѓР» РІ A, РЅР°РёРјРµРЅРѕРІР°РЅРёРµ РІ D Рё РѕСЃС‚Р°С‚РѕРє РІ N."); return; }
+            if (_items.Count > 0 && MessageBox.Show("Р—Р°РјРµРЅРёС‚СЊ С‚РµРєСѓС‰СѓСЋ РёРЅРІРµРЅС‚Р°СЂРёР·Р°С†РёСЋ? РўРµРєСѓС‰РёР№ РїСЂРѕРіСЂРµСЃСЃ Р±СѓРґРµС‚ Р·Р°РјРµРЅС‘РЅ.", "РџРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+            _items.Clear(); foreach (var item in dict.Values) _items.Add(item);
+            _undo.Clear(); _source = dlg.FileName; FileLabel.Text = Path.GetFileName(_source);
+            StatusText.Text = $"Р—Р°РіСЂСѓР¶РµРЅРѕ {_items.Count} СѓРЅРёРєР°Р»СЊРЅС‹С… РїРѕР·РёС†РёР№"; RefreshView(); SaveSession(); ScanBox.Focus();
+        }
+        catch (Exception ex) { MessageBox.Show("РћС€РёР±РєР° С‡С‚РµРЅРёСЏ Excel: " + ex.Message); }
+    }
+    private void Scan_Click(object sender, RoutedEventArgs e) => AddScan();
+    private void ScanBox_KeyDown(object sender, KeyEventArgs e) { if (e.Key == Key.Enter) { e.Handled = true; AddScan(); } }
+    private void AddScan()
+    {
+        string code = ScanBox.Text.Trim(); ScanBox.Clear(); if (code.Length == 0) return;
+        var item = _items.FirstOrDefault(x => string.Equals(x.Code, code, StringComparison.OrdinalIgnoreCase));
+        if (item is null) { StatusText.Text = $"РќРµ РЅР°Р№РґРµРЅ РІ РґРѕРєСѓРјРµРЅС‚Рµ: {code}"; if (_sound) System.Media.SystemSounds.Exclamation.Play(); ScanBox.Focus(); return; }
+        SetLastScanned(item);
+        item.Fact++; _undo.Push(item.Code); StatusText.Text = $"Р”РѕР±Р°РІР»РµРЅ: {item.Code} вЂ” {item.Name}";
+        if (_sound) System.Media.SystemSounds.Asterisk.Play(); RefreshView(); SaveSession(); ScanBox.Focus();
+        ItemsGrid.SelectedItem = item;
+        CenterItemInView(item);
+    }
+
+    private void SetLastScanned(InventoryItem current)
+    {
+        foreach (var x in _items) x.IsLastScanned = false;
+        current.IsLastScanned = true;
+    }
+
+    private void CenterItemInView(InventoryItem item)
+    {
+        // РЎРЅР°С‡Р°Р»Р° РїСЂРѕРєСЂСѓС‡РёРІР°РµРј Рє СЌР»РµРјРµРЅС‚Сѓ, С‡С‚РѕР±С‹ WPF СЃРѕР·РґР°Р» РІРёСЂС‚СѓР°Р»РёР·РёСЂРѕРІР°РЅРЅСѓСЋ СЃС‚СЂРѕРєСѓ.
+        ItemsGrid.ScrollIntoView(item);
+        ItemsGrid.Dispatcher.BeginInvoke(new Action(() =>
+        {
+            ItemsGrid.UpdateLayout();
+            var row = ItemsGrid.ItemContainerGenerator.ContainerFromItem(item) as System.Windows.Controls.DataGridRow;
+            var viewer = FindVisualChild<System.Windows.Controls.ScrollViewer>(ItemsGrid);
+            if (row is null || viewer is null) return;
+
+            // Р’С‹СЂР°РІРЅРёРІР°РµРј СЃС‚СЂРѕРєСѓ РїРѕ С†РµРЅС‚СЂСѓ РІРёРґРёРјРѕР№ РѕР±Р»Р°СЃС‚Рё DataGrid.
+            var point = row.TranslatePoint(new Point(0, 0), viewer);
+            double desiredTop = Math.Max(0, (viewer.ViewportHeight - row.ActualHeight) / 2.0);
+            double newOffset = viewer.VerticalOffset + point.Y - desiredTop;
+            viewer.ScrollToVerticalOffset(Math.Max(0, newOffset));
+            ItemsGrid.UpdateLayout();
+            ItemsGrid.SelectedItem = item;
+            ItemsGrid.Focus();
+        }), System.Windows.Threading.DispatcherPriority.ContextIdle);
+    }
+
+    private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+    {
+        int count = System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent);
+        for (int i = 0; i < count; i++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+            if (child is T match) return match;
+            var nested = FindVisualChild<T>(child);
+            if (nested is not null) return nested;
+        }
+        return null;
+    }
+
+    private void Undo_Click(object sender, RoutedEventArgs e) => UndoScan();
+    private void UndoScan()
+    {
+        if (_undo.Count == 0) { StatusText.Text = "РќРµС‚ СЃРєР°РЅРѕРІ РґР»СЏ РѕС‚РјРµРЅС‹"; return; }
+        string code = _undo.Pop(); var item = _items.FirstOrDefault(x => x.Code == code);
+        if (item is not null && item.Fact > 0)
+        {
+            item.Fact--;
+            SetLastScanned(item);
+        }
+        StatusText.Text = $"РћС‚РјРµРЅС‘РЅ РїРѕСЃР»РµРґРЅРёР№ СЃРєР°РЅ: {code}"; RefreshView(); SaveSession(); ScanBox.Focus();
+        if (item is not null) { ItemsGrid.SelectedItem = item; CenterItemInView(item); }
+    }
+    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Z) { UndoScan(); e.Handled = true; }
+    }
+    private void Search_Changed(object sender, System.Windows.Controls.TextChangedEventArgs e) => RefreshView();
+    private void Sound_Click(object sender, RoutedEventArgs e) { _sound = !_sound; SoundButton.Content = _sound ? "рџ”Љ Р—РІСѓРє: Р’РєР»" : "рџ”‡ Р—РІСѓРє: Р’С‹РєР»"; }
+    private void RefreshView()
+    {
+        string q = SearchBox.Text.Trim();
+        ItemsGrid.Items.Refresh();
+        ICollectionView view = System.Windows.Data.CollectionViewSource.GetDefaultView(_items);
+        view.Filter = o => { var x=(InventoryItem)o; return q.Length==0 || x.Code.Contains(q,StringComparison.OrdinalIgnoreCase) || x.Name.Contains(q,StringComparison.OrdinalIgnoreCase); };
+        TotalText.Text = _items.Count.ToString();
+        MatchText.Text = _items.Count(x => x.Diff == 0).ToString();
+        ShortText.Text = _items.Count(x => x.Diff < 0).ToString();
+        OverText.Text = _items.Count(x => x.Diff > 0).ToString();
+        ScannedText.Text = _items.Sum(x => x.Fact).ToString();
+    }
+    private void Finish_Click(object sender, RoutedEventArgs e)
+    {
+        if (_items.Count == 0) { MessageBox.Show("РЎРЅР°С‡Р°Р»Р° Р·Р°РіСЂСѓР·РёС‚Рµ Excel-С„Р°Р№Р»."); return; }
+        int uncounted = _items.Count(x => x.Fact == 0);
+        MessageBox.Show($"Р’СЃРµРіРѕ РїРѕР·РёС†РёР№: {_items.Count}\nРЎРѕРІРїР°РґР°РµС‚: {_items.Count(x=>x.Diff==0)}\nРќРµРґРѕСЃС‚Р°С‡Р°: {_items.Count(x=>x.Diff<0)}\nРР·Р»РёС€РµРє: {_items.Count(x=>x.Diff>0)}\nРќРµ СЃРєР°РЅРёСЂРѕРІР°Р»РёСЃСЊ: {uncounted}", "РС‚РѕРіРё РёРЅРІРµРЅС‚Р°СЂРёР·Р°С†РёРё");
+    }
+    private void Export_Click(object sender, RoutedEventArgs e)
+    {
+        if (_items.Count == 0) { MessageBox.Show("РќРµС‚ РґР°РЅРЅС‹С… РґР»СЏ СЌРєСЃРїРѕСЂС‚Р°."); return; }
+        var dlg = new SaveFileDialog { Filter = "CSV РґР»СЏ Excel (*.csv)|*.csv", FileName = $"РРЅРІРµРЅС‚Р°СЂРёР·Р°С†РёСЏ_{DateTime.Now:yyyy-MM-dd_HH-mm}.csv" };
+        if (dlg.ShowDialog() != true) return;
+        var sb = new StringBuilder(); sb.AppendLine("РђСЂС‚РёРєСѓР»;РќРѕРјРµРЅРєР»Р°С‚СѓСЂР°;РћСЃС‚Р°С‚РѕРє РїРѕ Excel;Р¤Р°РєС‚РёС‡РµСЃРєРё;Р Р°Р·РЅРёС†Р°;РЎС‚Р°С‚СѓСЃ");
+        foreach (var x in _items) sb.AppendLine($"{Csv(x.Code)};{Csv(x.Name)};{x.Stock.ToString(CultureInfo.InvariantCulture)};{x.Fact};{x.Diff.ToString(CultureInfo.InvariantCulture)};{Csv(x.Status)}");
+        File.WriteAllText(dlg.FileName, sb.ToString(), new UTF8Encoding(true)); MessageBox.Show("РћС‚С‡С‘С‚ СЃРѕС…СЂР°РЅС‘РЅ:\n" + dlg.FileName);
+    }
+    private static string Csv(string s) => "\"" + s.Replace("\"", "\"\"") + "\"";
+    private void SaveSession()
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(_sessionPath)!);
+            var data = new SessionData { Source = _source, Items = _items.ToList(), Undo = _undo.Reverse().ToList() };
+            File.WriteAllText(_sessionPath, JsonSerializer.Serialize(data));
+        } catch { }
+    }
+    private void LoadSession()
+    {
+        try
+        {
+            if (!File.Exists(_sessionPath)) return;
+            var data = JsonSerializer.Deserialize<SessionData>(File.ReadAllText(_sessionPath));
+            if (data?.Items.Count > 0 && MessageBox.Show($"РќР°Р№РґРµРЅР° РЅРµР·Р°РІРµСЂС€С‘РЅРЅР°СЏ РёРЅРІРµРЅС‚Р°СЂРёР·Р°С†РёСЏ ({data.Items.Count} РїРѕР·РёС†РёР№). РџСЂРѕРґРѕР»Р¶РёС‚СЊ?", "Р’РѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёРµ", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+            {
+                _source = data.Source; _items.Clear(); foreach (var item in data.Items) _items.Add(item);
+                foreach (var code in data.Undo) _undo.Push(code);
+                FileLabel.Text = string.IsNullOrWhiteSpace(_source) ? "Р’РѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРЅР°СЏ СЃРµСЃСЃРёСЏ" : Path.GetFileName(_source);
+                StatusText.Text = "Р’РѕСЃСЃС‚Р°РЅРѕРІР»РµРЅР° РїРѕСЃР»РµРґРЅСЏСЏ СЃРµСЃСЃРёСЏ"; RefreshView();
+            }
+        } catch { }
+    }
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e) { SaveSession(); base.OnClosing(e); }
+}
