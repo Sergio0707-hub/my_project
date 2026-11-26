@@ -18,6 +18,7 @@ public sealed class InventoryItem
     public string Name { get; set; } = "";
     public double Stock { get; set; }
     public int Fact { get; set; }
+    public bool IsLastScanned { get; set; }
     public double Diff => Fact - Stock;
     public string Status => Diff == 0 ? "Совпадает" : Diff < 0 ? "Недостача" : "Излишек";
 }
@@ -81,17 +82,68 @@ public partial class MainWindow : Window
         string code = ScanBox.Text.Trim(); ScanBox.Clear(); if (code.Length == 0) return;
         var item = _items.FirstOrDefault(x => string.Equals(x.Code, code, StringComparison.OrdinalIgnoreCase));
         if (item is null) { StatusText.Text = $"Не найден в документе: {code}"; if (_sound) System.Media.SystemSounds.Exclamation.Play(); ScanBox.Focus(); return; }
+        SetLastScanned(item);
         item.Fact++; _undo.Push(item.Code); StatusText.Text = $"Добавлен: {item.Code} — {item.Name}";
         if (_sound) System.Media.SystemSounds.Asterisk.Play(); RefreshView(); SaveSession(); ScanBox.Focus();
-        ItemsGrid.SelectedItem = item; ItemsGrid.ScrollIntoView(item);
+        ItemsGrid.SelectedItem = item;
+        CenterItemInView(item);
     }
+
+    private void SetLastScanned(InventoryItem current)
+    {
+        foreach (var x in _items) x.IsLastScanned = false;
+        current.IsLastScanned = true;
+    }
+
+    private void CenterItemInView(InventoryItem item)
+    {
+        // Сначала заставляем DataGrid создать контейнер строки, затем центрируем её.
+        ItemsGrid.ScrollIntoView(item);
+        ItemsGrid.Dispatcher.BeginInvoke(new Action(() =>
+        {
+            ItemsGrid.UpdateLayout();
+            var row = ItemsGrid.ItemContainerGenerator.ContainerFromItem(item) as System.Windows.Controls.DataGridRow;
+            if (row is null)
+            {
+                ItemsGrid.ScrollIntoView(item);
+                ItemsGrid.UpdateLayout();
+                row = ItemsGrid.ItemContainerGenerator.ContainerFromItem(item) as System.Windows.Controls.DataGridRow;
+            }
+            if (row is null) return;
+
+            var viewer = FindVisualChild<System.Windows.Controls.ScrollViewer>(ItemsGrid);
+            if (viewer is null) return;
+            var rowTop = row.TranslatePoint(new Point(0, 0), viewer).Y;
+            var targetOffset = viewer.VerticalOffset + rowTop - (viewer.ViewportHeight - row.ActualHeight) / 2;
+            viewer.ScrollToVerticalOffset(Math.Max(0, targetOffset));
+        }), System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+    {
+        int count = System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent);
+        for (int i = 0; i < count; i++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+            if (child is T match) return match;
+            var nested = FindVisualChild<T>(child);
+            if (nested is not null) return nested;
+        }
+        return null;
+    }
+
     private void Undo_Click(object sender, RoutedEventArgs e) => UndoScan();
     private void UndoScan()
     {
         if (_undo.Count == 0) { StatusText.Text = "Нет сканов для отмены"; return; }
         string code = _undo.Pop(); var item = _items.FirstOrDefault(x => x.Code == code);
-        if (item is not null && item.Fact > 0) item.Fact--;
+        if (item is not null && item.Fact > 0)
+        {
+            item.Fact--;
+            SetLastScanned(item);
+        }
         StatusText.Text = $"Отменён последний скан: {code}"; RefreshView(); SaveSession(); ScanBox.Focus();
+        if (item is not null) { ItemsGrid.SelectedItem = item; CenterItemInView(item); }
     }
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {

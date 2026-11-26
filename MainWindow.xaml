@@ -45,6 +45,25 @@
   <DataGrid x:Name="ItemsGrid" Margin="16,0,16,8" AutoGenerateColumns="False" IsReadOnly="True"
    CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
    AlternatingRowBackground="#F8FAFD" SelectionMode="Single">
+   <DataGrid.RowStyle>
+    <Style TargetType="DataGridRow">
+     <Setter Property="Background" Value="White"/>
+     <Setter Property="BorderBrush" Value="#E3E9F1"/>
+     <Setter Property="BorderThickness" Value="0,0,0,1"/>
+     <Style.Triggers>
+      <Trigger Property="IsSelected" Value="True">
+       <Setter Property="Background" Value="#D7E9FF"/>
+       <Setter Property="Foreground" Value="#173758"/>
+      </Trigger>
+      <DataTrigger Binding="{Binding IsLastScanned}" Value="True">
+       <Setter Property="Background" Value="#B9F2D2"/>
+       <Setter Property="Foreground" Value="#145B3E"/>
+       <Setter Property="BorderBrush" Value="#16865B"/>
+       <Setter Property="BorderThickness" Value="2,1,2,1"/>
+      </DataTrigger>
+     </Style.Triggers>
+    </Style>
+   </DataGrid.RowStyle>
    <DataGrid.Columns>
     <DataGridTextColumn Header="Артикул" Binding="{Binding Code}" Width="140"/>
     <DataGridTextColumn Header="Номенклатура" Binding="{Binding Name}" Width="*"/>
