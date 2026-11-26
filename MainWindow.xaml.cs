@@ -12,15 +12,27 @@ using System.Windows.Media;
 
 namespace Inventar;
 
-public sealed class InventoryItem
+public sealed class InventoryItem : INotifyPropertyChanged
 {
+    private int _fact;
+    private bool _isLastScanned;
     public string Code { get; set; } = "";
     public string Name { get; set; } = "";
     public double Stock { get; set; }
-    public int Fact { get; set; }
-    public bool IsLastScanned { get; set; }
+    public int Fact
+    {
+        get => _fact;
+        set { if (_fact == value) return; _fact = value; OnPropertyChanged(nameof(Fact)); OnPropertyChanged(nameof(Diff)); OnPropertyChanged(nameof(Status)); }
+    }
+    public bool IsLastScanned
+    {
+        get => _isLastScanned;
+        set { if (_isLastScanned == value) return; _isLastScanned = value; OnPropertyChanged(nameof(IsLastScanned)); }
+    }
     public double Diff => Fact - Stock;
-    public string Status => Diff == 0 ? "Совпадает" : Diff < 0 ? "Недостача" : "Излишек";
+    public string Status => Diff == 0 ? "РЎРѕРІРїР°РґР°РµС‚" : Diff < 0 ? "РќРµРґРѕСЃС‚Р°С‡Р°" : "РР·Р»РёС€РµРє";
+    public event PropertyChangedEventHandler? PropertyChanged;
+    private void OnPropertyChanged(string propertyName) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
 public sealed class SessionData
 {
@@ -44,7 +56,7 @@ public partial class MainWindow : Window
     }
     private void Load_Click(object sender, RoutedEventArgs e)
     {
-        var dlg = new OpenFileDialog { Filter = "Книги Excel (*.xlsx)|*.xlsx", Title = "Выберите файл инвентаризации" };
+        var dlg = new OpenFileDialog { Filter = "РљРЅРёРіРё Excel (*.xlsx)|*.xlsx", Title = "Р’С‹Р±РµСЂРёС‚Рµ С„Р°Р№Р» РёРЅРІРµРЅС‚Р°СЂРёР·Р°С†РёРё" };
         if (dlg.ShowDialog() != true) return;
         try
         {
@@ -55,7 +67,7 @@ public partial class MainWindow : Window
                 foreach (var row in ws.RowsUsed())
                 {
                     string code = row.Cell(1).GetString().Trim();
-                    if (string.IsNullOrWhiteSpace(code) || code.Equals("Артикул", StringComparison.OrdinalIgnoreCase) || code.StartsWith("Прайс-лист", StringComparison.OrdinalIgnoreCase)) continue;
+                    if (string.IsNullOrWhiteSpace(code) || code.Equals("РђСЂС‚РёРєСѓР»", StringComparison.OrdinalIgnoreCase) || code.StartsWith("РџСЂР°Р№СЃ-Р»РёСЃС‚", StringComparison.OrdinalIgnoreCase)) continue;
                     string name = row.Cell(4).GetString().Trim();
                     double stock = 0;
                     var cell = row.Cell(14);
@@ -67,13 +79,13 @@ public partial class MainWindow : Window
                     if (!dict.ContainsKey(code)) dict[code] = new InventoryItem { Code = code, Name = name, Stock = stock };
                 }
             }
-            if (dict.Count == 0) { MessageBox.Show("Не найдены товары. Ожидаются артикул в A, наименование в D и остаток в N."); return; }
-            if (_items.Count > 0 && MessageBox.Show("Заменить текущую инвентаризацию? Текущий прогресс будет заменён.", "Подтверждение", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+            if (dict.Count == 0) { MessageBox.Show("РќРµ РЅР°Р№РґРµРЅС‹ С‚РѕРІР°СЂС‹. РћР¶РёРґР°СЋС‚СЃСЏ Р°СЂС‚РёРєСѓР» РІ A, РЅР°РёРјРµРЅРѕРІР°РЅРёРµ РІ D Рё РѕСЃС‚Р°С‚РѕРє РІ N."); return; }
+            if (_items.Count > 0 && MessageBox.Show("Р—Р°РјРµРЅРёС‚СЊ С‚РµРєСѓС‰СѓСЋ РёРЅРІРµРЅС‚Р°СЂРёР·Р°С†РёСЋ? РўРµРєСѓС‰РёР№ РїСЂРѕРіСЂРµСЃСЃ Р±СѓРґРµС‚ Р·Р°РјРµРЅС‘РЅ.", "РџРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
             _items.Clear(); foreach (var item in dict.Values) _items.Add(item);
             _undo.Clear(); _source = dlg.FileName; FileLabel.Text = Path.GetFileName(_source);
-            StatusText.Text = $"Загружено {_items.Count} уникальных позиций"; RefreshView(); SaveSession(); ScanBox.Focus();
+            StatusText.Text = $"Р—Р°РіСЂСѓР¶РµРЅРѕ {_items.Count} СѓРЅРёРєР°Р»СЊРЅС‹С… РїРѕР·РёС†РёР№"; RefreshView(); SaveSession(); ScanBox.Focus();
         }
-        catch (Exception ex) { MessageBox.Show("Ошибка чтения Excel: " + ex.Message); }
+        catch (Exception ex) { MessageBox.Show("РћС€РёР±РєР° С‡С‚РµРЅРёСЏ Excel: " + ex.Message); }
     }
     private void Scan_Click(object sender, RoutedEventArgs e) => AddScan();
     private void ScanBox_KeyDown(object sender, KeyEventArgs e) { if (e.Key == Key.Enter) { e.Handled = true; AddScan(); } }
@@ -81,9 +93,9 @@ public partial class MainWindow : Window
     {
         string code = ScanBox.Text.Trim(); ScanBox.Clear(); if (code.Length == 0) return;
         var item = _items.FirstOrDefault(x => string.Equals(x.Code, code, StringComparison.OrdinalIgnoreCase));
-        if (item is null) { StatusText.Text = $"Не найден в документе: {code}"; if (_sound) System.Media.SystemSounds.Exclamation.Play(); ScanBox.Focus(); return; }
+        if (item is null) { StatusText.Text = $"РќРµ РЅР°Р№РґРµРЅ РІ РґРѕРєСѓРјРµРЅС‚Рµ: {code}"; if (_sound) System.Media.SystemSounds.Exclamation.Play(); ScanBox.Focus(); return; }
         SetLastScanned(item);
-        item.Fact++; _undo.Push(item.Code); StatusText.Text = $"Добавлен: {item.Code} — {item.Name}";
+        item.Fact++; _undo.Push(item.Code); StatusText.Text = $"Р”РѕР±Р°РІР»РµРЅ: {item.Code} вЂ” {item.Name}";
         if (_sound) System.Media.SystemSounds.Asterisk.Play(); RefreshView(); SaveSession(); ScanBox.Focus();
         ItemsGrid.SelectedItem = item;
         CenterItemInView(item);
@@ -97,7 +109,7 @@ public partial class MainWindow : Window
 
     private void CenterItemInView(InventoryItem item)
     {
-        // Сначала заставляем DataGrid создать контейнер строки, затем центрируем её.
+        // РЎРЅР°С‡Р°Р»Р° Р·Р°СЃС‚Р°РІР»СЏРµРј DataGrid СЃРѕР·РґР°С‚СЊ РєРѕРЅС‚РµР№РЅРµСЂ СЃС‚СЂРѕРєРё, Р·Р°С‚РµРј С†РµРЅС‚СЂРёСЂСѓРµРј РµС‘.
         ItemsGrid.ScrollIntoView(item);
         ItemsGrid.Dispatcher.BeginInvoke(new Action(() =>
         {
@@ -135,14 +147,14 @@ public partial class MainWindow : Window
     private void Undo_Click(object sender, RoutedEventArgs e) => UndoScan();
     private void UndoScan()
     {
-        if (_undo.Count == 0) { StatusText.Text = "Нет сканов для отмены"; return; }
+        if (_undo.Count == 0) { StatusText.Text = "РќРµС‚ СЃРєР°РЅРѕРІ РґР»СЏ РѕС‚РјРµРЅС‹"; return; }
         string code = _undo.Pop(); var item = _items.FirstOrDefault(x => x.Code == code);
         if (item is not null && item.Fact > 0)
         {
             item.Fact--;
             SetLastScanned(item);
         }
-        StatusText.Text = $"Отменён последний скан: {code}"; RefreshView(); SaveSession(); ScanBox.Focus();
+        StatusText.Text = $"РћС‚РјРµРЅС‘РЅ РїРѕСЃР»РµРґРЅРёР№ СЃРєР°РЅ: {code}"; RefreshView(); SaveSession(); ScanBox.Focus();
         if (item is not null) { ItemsGrid.SelectedItem = item; CenterItemInView(item); }
     }
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -150,7 +162,7 @@ public partial class MainWindow : Window
         if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Z) { UndoScan(); e.Handled = true; }
     }
     private void Search_Changed(object sender, System.Windows.Controls.TextChangedEventArgs e) => RefreshView();
-    private void Sound_Click(object sender, RoutedEventArgs e) { _sound = !_sound; SoundButton.Content = _sound ? "🔊 Звук: Вкл" : "🔇 Звук: Выкл"; }
+    private void Sound_Click(object sender, RoutedEventArgs e) { _sound = !_sound; SoundButton.Content = _sound ? "рџ”Љ Р—РІСѓРє: Р’РєР»" : "рџ”‡ Р—РІСѓРє: Р’С‹РєР»"; }
     private void RefreshView()
     {
         string q = SearchBox.Text.Trim();
@@ -165,18 +177,18 @@ public partial class MainWindow : Window
     }
     private void Finish_Click(object sender, RoutedEventArgs e)
     {
-        if (_items.Count == 0) { MessageBox.Show("Сначала загрузите Excel-файл."); return; }
+        if (_items.Count == 0) { MessageBox.Show("РЎРЅР°С‡Р°Р»Р° Р·Р°РіСЂСѓР·РёС‚Рµ Excel-С„Р°Р№Р»."); return; }
         int uncounted = _items.Count(x => x.Fact == 0);
-        MessageBox.Show($"Всего позиций: {_items.Count}\nСовпадает: {_items.Count(x=>x.Diff==0)}\nНедостача: {_items.Count(x=>x.Diff<0)}\nИзлишек: {_items.Count(x=>x.Diff>0)}\nНе сканировались: {uncounted}", "Итоги инвентаризации");
+        MessageBox.Show($"Р’СЃРµРіРѕ РїРѕР·РёС†РёР№: {_items.Count}\nРЎРѕРІРїР°РґР°РµС‚: {_items.Count(x=>x.Diff==0)}\nРќРµРґРѕСЃС‚Р°С‡Р°: {_items.Count(x=>x.Diff<0)}\nРР·Р»РёС€РµРє: {_items.Count(x=>x.Diff>0)}\nРќРµ СЃРєР°РЅРёСЂРѕРІР°Р»РёСЃСЊ: {uncounted}", "РС‚РѕРіРё РёРЅРІРµРЅС‚Р°СЂРёР·Р°С†РёРё");
     }
     private void Export_Click(object sender, RoutedEventArgs e)
     {
-        if (_items.Count == 0) { MessageBox.Show("Нет данных для экспорта."); return; }
-        var dlg = new SaveFileDialog { Filter = "CSV для Excel (*.csv)|*.csv", FileName = $"Инвентаризация_{DateTime.Now:yyyy-MM-dd_HH-mm}.csv" };
+        if (_items.Count == 0) { MessageBox.Show("РќРµС‚ РґР°РЅРЅС‹С… РґР»СЏ СЌРєСЃРїРѕСЂС‚Р°."); return; }
+        var dlg = new SaveFileDialog { Filter = "CSV РґР»СЏ Excel (*.csv)|*.csv", FileName = $"РРЅРІРµРЅС‚Р°СЂРёР·Р°С†РёСЏ_{DateTime.Now:yyyy-MM-dd_HH-mm}.csv" };
         if (dlg.ShowDialog() != true) return;
-        var sb = new StringBuilder(); sb.AppendLine("Артикул;Номенклатура;Остаток по Excel;Фактически;Разница;Статус");
+        var sb = new StringBuilder(); sb.AppendLine("РђСЂС‚РёРєСѓР»;РќРѕРјРµРЅРєР»Р°С‚СѓСЂР°;РћСЃС‚Р°С‚РѕРє РїРѕ Excel;Р¤Р°РєС‚РёС‡РµСЃРєРё;Р Р°Р·РЅРёС†Р°;РЎС‚Р°С‚СѓСЃ");
         foreach (var x in _items) sb.AppendLine($"{Csv(x.Code)};{Csv(x.Name)};{x.Stock.ToString(CultureInfo.InvariantCulture)};{x.Fact};{x.Diff.ToString(CultureInfo.InvariantCulture)};{Csv(x.Status)}");
-        File.WriteAllText(dlg.FileName, sb.ToString(), new UTF8Encoding(true)); MessageBox.Show("Отчёт сохранён:\n" + dlg.FileName);
+        File.WriteAllText(dlg.FileName, sb.ToString(), new UTF8Encoding(true)); MessageBox.Show("РћС‚С‡С‘С‚ СЃРѕС…СЂР°РЅС‘РЅ:\n" + dlg.FileName);
     }
     private static string Csv(string s) => "\"" + s.Replace("\"", "\"\"") + "\"";
     private void SaveSession()
@@ -194,12 +206,12 @@ public partial class MainWindow : Window
         {
             if (!File.Exists(_sessionPath)) return;
             var data = JsonSerializer.Deserialize<SessionData>(File.ReadAllText(_sessionPath));
-            if (data?.Items.Count > 0 && MessageBox.Show($"Найдена незавершённая инвентаризация ({data.Items.Count} позиций). Продолжить?", "Восстановление", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+            if (data?.Items.Count > 0 && MessageBox.Show($"РќР°Р№РґРµРЅР° РЅРµР·Р°РІРµСЂС€С‘РЅРЅР°СЏ РёРЅРІРµРЅС‚Р°СЂРёР·Р°С†РёСЏ ({data.Items.Count} РїРѕР·РёС†РёР№). РџСЂРѕРґРѕР»Р¶РёС‚СЊ?", "Р’РѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёРµ", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
             {
                 _source = data.Source; _items.Clear(); foreach (var item in data.Items) _items.Add(item);
                 foreach (var code in data.Undo) _undo.Push(code);
-                FileLabel.Text = string.IsNullOrWhiteSpace(_source) ? "Восстановленная сессия" : Path.GetFileName(_source);
-                StatusText.Text = "Восстановлена последняя сессия"; RefreshView();
+                FileLabel.Text = string.IsNullOrWhiteSpace(_source) ? "Р’РѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРЅР°СЏ СЃРµСЃСЃРёСЏ" : Path.GetFileName(_source);
+                StatusText.Text = "Р’РѕСЃСЃС‚Р°РЅРѕРІР»РµРЅР° РїРѕСЃР»РµРґРЅСЏСЏ СЃРµСЃСЃРёСЏ"; RefreshView();
             }
         } catch { }
     }
