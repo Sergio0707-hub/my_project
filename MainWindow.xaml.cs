@@ -124,41 +124,35 @@ public partial class MainWindow : Window
 
     private void CenterItemInView(InventoryItem item)
     {
-        // ScrollIntoView заставляет DataGrid создать контейнер строки, даже если
-        // товар находится далеко за пределами видимой части списка.
-        ItemsGrid.ScrollIntoView(item);
-        ItemsGrid.UpdateLayout();
+        // DataGrid с виртуализацией использует логические единицы прокрутки:
+        // VerticalOffset здесь измеряется строками, а не пикселями.
+        // Поэтому вычисляем индекс товара в текущем (возможно отфильтрованном) списке.
+        ItemsGrid.SelectedItem = item;
+        ItemsGrid.ScrollIntoView(item); // создаём контейнер для строки, даже если она далеко
 
         ItemsGrid.Dispatcher.BeginInvoke(new Action(() =>
         {
             ItemsGrid.UpdateLayout();
-            var row = ItemsGrid.ItemContainerGenerator.ContainerFromItem(item)
-                      as System.Windows.Controls.DataGridRow;
+
             var viewer = ItemsGrid.Template.FindName("DG_ScrollViewer", ItemsGrid)
                          as System.Windows.Controls.ScrollViewer
                          ?? FindVisualChild<System.Windows.Controls.ScrollViewer>(ItemsGrid);
+            if (viewer == null) return;
 
-            if (row == null || viewer == null) return;
+            int visibleIndex = ItemsGrid.Items.IndexOf(item);
+            if (visibleIndex < 0) return; // например, товар скрыт текущим поиском
 
-            // Сначала гарантируем, что строка вошла в область прокрутки.
-            row.BringIntoView();
+            // При CanContentScroll=True ViewportHeight и VerticalOffset у DataGrid
+            // выражены в логических единицах (строках). Центрируем индекс в viewport.
+            double targetOffset = visibleIndex - (viewer.ViewportHeight / 2.0);
+            if (targetOffset < 0) targetOffset = 0;
+            double maxOffset = Math.Max(0, viewer.ExtentHeight - viewer.ViewportHeight);
+            if (targetOffset > maxOffset) targetOffset = maxOffset;
+
+            viewer.ScrollToVerticalOffset(targetOffset);
+            viewer.UpdateLayout();
             ItemsGrid.UpdateLayout();
-
-            ItemsGrid.Dispatcher.BeginInvoke(new Action(() =>
-            {
-                ItemsGrid.UpdateLayout();
-                var currentRow = ItemsGrid.ItemContainerGenerator.ContainerFromItem(item)
-                                 as System.Windows.Controls.DataGridRow;
-                if (currentRow == null) return;
-
-                var point = currentRow.TransformToAncestor(viewer)
-                                       .Transform(new Point(0, 0));
-                double targetTop = Math.Max(0, (viewer.ViewportHeight - currentRow.ActualHeight) / 2.0);
-                double offset = viewer.VerticalOffset + point.Y - targetTop;
-                viewer.ScrollToVerticalOffset(Math.Max(0, offset));
-                ItemsGrid.UpdateLayout();
-                ItemsGrid.SelectedItem = item;
-            }), System.Windows.Threading.DispatcherPriority.Render);
+            ItemsGrid.SelectedItem = item;
         }), System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
