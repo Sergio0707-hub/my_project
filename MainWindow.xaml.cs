@@ -124,24 +124,42 @@ public partial class MainWindow : Window
 
     private void CenterItemInView(InventoryItem item)
     {
-        // Сначала прокручиваем к элементу, чтобы WPF создал виртуализированную строку.
+        // ScrollIntoView заставляет DataGrid создать контейнер строки, даже если
+        // товар находится далеко за пределами видимой части списка.
         ItemsGrid.ScrollIntoView(item);
+        ItemsGrid.UpdateLayout();
+
         ItemsGrid.Dispatcher.BeginInvoke(new Action(() =>
         {
             ItemsGrid.UpdateLayout();
-            var row = ItemsGrid.ItemContainerGenerator.ContainerFromItem(item) as System.Windows.Controls.DataGridRow;
-            var viewer = FindVisualChild<System.Windows.Controls.ScrollViewer>(ItemsGrid);
-            if (row is null || viewer is null) return;
+            var row = ItemsGrid.ItemContainerGenerator.ContainerFromItem(item)
+                      as System.Windows.Controls.DataGridRow;
+            var viewer = ItemsGrid.Template.FindName("DG_ScrollViewer", ItemsGrid)
+                         as System.Windows.Controls.ScrollViewer
+                         ?? FindVisualChild<System.Windows.Controls.ScrollViewer>(ItemsGrid);
 
-            // Выравниваем строку по центру видимой области DataGrid.
-            var point = row.TranslatePoint(new Point(0, 0), viewer);
-            double desiredTop = Math.Max(0, (viewer.ViewportHeight - row.ActualHeight) / 2.0);
-            double newOffset = viewer.VerticalOffset + point.Y - desiredTop;
-            viewer.ScrollToVerticalOffset(Math.Max(0, newOffset));
+            if (row == null || viewer == null) return;
+
+            // Сначала гарантируем, что строка вошла в область прокрутки.
+            row.BringIntoView();
             ItemsGrid.UpdateLayout();
-            ItemsGrid.SelectedItem = item;
-            ItemsGrid.Focus();
-        }), System.Windows.Threading.DispatcherPriority.ContextIdle);
+
+            ItemsGrid.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                ItemsGrid.UpdateLayout();
+                var currentRow = ItemsGrid.ItemContainerGenerator.ContainerFromItem(item)
+                                 as System.Windows.Controls.DataGridRow;
+                if (currentRow == null) return;
+
+                var point = currentRow.TransformToAncestor(viewer)
+                                       .Transform(new Point(0, 0));
+                double targetTop = Math.Max(0, (viewer.ViewportHeight - currentRow.ActualHeight) / 2.0);
+                double offset = viewer.VerticalOffset + point.Y - targetTop;
+                viewer.ScrollToVerticalOffset(Math.Max(0, offset));
+                ItemsGrid.UpdateLayout();
+                ItemsGrid.SelectedItem = item;
+            }), System.Windows.Threading.DispatcherPriority.Render);
+        }), System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
