@@ -48,12 +48,13 @@
    <DataGrid.RowStyle>
     <Style TargetType="DataGridRow">
      <Setter Property="Background" Value="White"/>
+     <Setter Property="Foreground" Value="#172B3A"/>
      <Setter Property="BorderBrush" Value="#E3E9F1"/>
      <Setter Property="BorderThickness" Value="0,0,0,1"/>
      <Style.Triggers>
       <Trigger Property="IsSelected" Value="True">
-       <Setter Property="Background" Value="#D7E9FF"/>
-       <Setter Property="Foreground" Value="#173758"/>
+       <Setter Property="Background" Value="#39D879"/>
+       <Setter Property="Foreground" Value="#073B20"/>
       </Trigger>
       <DataTrigger Binding="{Binding IsLastScanned}" Value="True">
        <Setter Property="Background" Value="#39D879"/>
@@ -64,6 +65,23 @@
      </Style.Triggers>
     </Style>
    </DataGrid.RowStyle>
+   <DataGrid.CellStyle>
+    <Style TargetType="DataGridCell">
+     <Setter Property="Background" Value="Transparent"/>
+     <Setter Property="Foreground" Value="#172B3A"/>
+     <Setter Property="BorderThickness" Value="0"/>
+     <Style.Triggers>
+      <Trigger Property="IsSelected" Value="True">
+       <Setter Property="Background" Value="#39D879"/>
+       <Setter Property="Foreground" Value="#073B20"/>
+      </Trigger>
+      <DataTrigger Binding="{Binding IsLastScanned}" Value="True">
+       <Setter Property="Background" Value="#39D879"/>
+       <Setter Property="Foreground" Value="#073B20"/>
+      </DataTrigger>
+     </Style.Triggers>
+    </Style>
+   </DataGrid.CellStyle>
    <DataGrid.Columns>
     <DataGridTextColumn Header="Артикул" Binding="{Binding Code}" Width="140"/>
     <DataGridTextColumn Header="Номенклатура" Binding="{Binding Name}" Width="*"/>
